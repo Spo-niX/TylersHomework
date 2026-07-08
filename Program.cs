@@ -16,14 +16,10 @@ string token = builder.Configuration["token"]!;
 var dbPath = "bot.db";
 DatabaseConnection.Initialize(dbPath);
 
-var services = new ServiceCollection();
-
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<CallbackHandlerHelp>();
 
-var ServiceProvider = services.BuildServiceProvider();
-
-
+var ServiceProvider = builder.Services.BuildServiceProvider();
 var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
 
 var botClient = new TelegramBotClient(token);
