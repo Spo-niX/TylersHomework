@@ -44,6 +44,7 @@ cts.Cancel();
 
 async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationToken cancellationToken)
 {
+    Console.WriteLine($"Получено обновление: {update.Type}");
     try
     {
         if (update.Message is { } message)
