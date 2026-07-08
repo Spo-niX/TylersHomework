@@ -8,6 +8,43 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using TylersHomework.Core.Database;
 using TylersHomework.Core.Database.Repositories;
+using System.Net;
+using System.Net.Sockets;
+
+var proxy = new WebProxy("socks5://127.0.0.1:1080");
+
+// 2. Создаём Handler с кастомным резолвингом
+var handler = new HttpClientHandler
+{
+    Proxy = proxy,
+    UseProxy = true
+};
+
+// 3. Принудительно подменяем DNS
+handler.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+// Создаём кастомный SocketsHttpHandler (для .NET Core)
+var socketsHandler = new SocketsHttpHandler
+{
+    Proxy = proxy,
+    UseProxy = true,
+    ConnectCallback = async (context, cancellationToken) =>
+    {
+        // Если запрос к api.telegram.org — подменяем IP
+        if (context.DnsEndPoint.Host == "api.telegram.org")
+        {
+            var ipAddress = IPAddress.Parse("149.154.167.99");
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            await socket.ConnectAsync(ipAddress, context.DnsEndPoint.Port);
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        // Для всех остальных запросов — стандартное поведение
+        var defaultSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        await defaultSocket.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port);
+        return new NetworkStream(defaultSocket, ownsSocket: true);
+    }
+};
+
+var httpClient = new HttpClient(socketsHandler);
 
 var builder = Host.CreateApplicationBuilder();
 
@@ -22,7 +59,7 @@ builder.Services.AddSingleton<CallbackHandlerHelp>();
 var ServiceProvider = builder.Services.BuildServiceProvider();
 var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
 
-var botClient = new TelegramBotClient(token);
+var botClient = new TelegramBotClient(token, httpClient);
 var commandExecutor = new CommandExecutor();  
 
 using var cts = new CancellationTokenSource();
