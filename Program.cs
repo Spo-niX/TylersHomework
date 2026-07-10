@@ -11,7 +11,7 @@ using TylersHomework.Core.Database.Repositories;
 using System.Net;
 using System.Net.Sockets;
 
-var proxy = new WebProxy("socks5://127.0.0.1:1080");
+var proxy = new WebProxy("socks5://127.0.0.1:1088");
 
 // 2. Создаём Handler с кастомным резолвингом
 var handler = new HttpClientHandler
