@@ -10,6 +10,8 @@ using TylersHomework.Core.Database;
 using TylersHomework.Core.Database.Repositories;
 using System.Net;
 using System.Net.Sockets;
+using Telegram.Bot.Types.ReplyMarkups;
+using System.Net.Http.Headers;
 
 var proxy = new WebProxy("socks5://127.0.0.1:1088");
 
@@ -18,6 +20,11 @@ var handler = new HttpClientHandler
 {
     Proxy = proxy,
     UseProxy = true
+};
+List<string> AgentNames = new List<string>
+{
+    "ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", 
+    "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIET"
 };
 
 // 3. Принудительно подменяем DNS
@@ -58,6 +65,7 @@ builder.Services.AddSingleton<CallbackHandlerHelp>();
 
 var ServiceProvider = builder.Services.BuildServiceProvider();
 var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
+var _userRepo = ServiceProvider.GetRequiredService<UserRepository>();
 
 var botClient = new TelegramBotClient(token, httpClient);
 var commandExecutor = new CommandExecutor();  
@@ -86,7 +94,38 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
     {
         if (update.Message is { } message)
         {
-            await commandExecutor.ExecuteAsync(client, message, cancellationToken);
+            var chatId = message.Chat.Id;
+            var text = message.Text;
+
+            var state = UserStates.GetState(message.From!.Id);
+            if(state == "waitName")
+            {
+                if (text!.Length < 3 || text.Length > 10 || !text.All(x => char.IsLetter(x)))
+                {
+                    await client.SendTextMessageAsync(
+                        chatId, "Позывной не прошёл валидацию. Пожалуйста, попробуйте ещё раз", 
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+                else
+                {
+                    if (!await _userRepo.ExistsAsync(message.From.Id))
+                    {
+                        await createAgent(message.From.Id, text);
+                    }
+                    
+                    UserStates.ClearState(message.From.Id);
+
+                    await client.SendTextMessageAsync(
+                        chatId, 
+                        "Позывной успешно прошёл валидацию!", 
+                        cancellationToken: cancellationToken);
+                }
+            }
+            else
+            {
+                await commandExecutor.ExecuteAsync(client, message, cancellationToken);
+            }
         }
         else if(update.Type == UpdateType.CallbackQuery)
         {
@@ -110,4 +149,18 @@ Task HandleErrorAsync(ITelegramBotClient client, Exception exception, Cancellati
 {
     Console.WriteLine($"ошибка: {exception.Message}");
     return Task.CompletedTask;
+}
+
+
+async Task createAgent(long tgId, string text)
+{
+    await _userRepo.SaveAsync(new TylersHomework.Core.Database.Models.User
+    {
+        TgId = tgId,
+        AgentName = AgentNames[await _userRepo.GetCountAsync() % AgentNames.Count] 
+            + ' ' + $"00{await _userRepo.GetCountAsync() + 1}".PadLeft(4, '0') + $@" ""{text}""",
+        Mmr = 0,
+        TaskCompleted = 0,
+
+    });
 }
