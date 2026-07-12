@@ -22,7 +22,6 @@ public class CallbackHandlerHelp
 
         await bot.AnswerCallbackQueryAsync(
             callbackQueryId: callback.Id,
-            text: "Не ссы в компот",
             cancellationToken: ct
         );
         bool isEx = false;
@@ -81,7 +80,7 @@ public class CallbackHandlerHelp
 
                     На данный момент, вы выполнили {agent.TaskCompleted} заданий!
                     """,
-                    replyMarkup: GetMainMenuKeyboard(),
+                    replyMarkup: GetBackButton("menu"),
                     cancellationToken: ct
                 );
 
