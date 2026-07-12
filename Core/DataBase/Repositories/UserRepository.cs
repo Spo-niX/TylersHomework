@@ -31,7 +31,7 @@ public class UserRepository
         using var connection = DatabaseConnection.GetConnection();
         
         var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Users WHERE TelegramId = @tgId";
+        cmd.CommandText = "SELECT * FROM Users WHERE TgId = @tgId";
         cmd.Parameters.AddWithValue("@tgId", telegramId);
         
         using var reader = await cmd.ExecuteReaderAsync();
