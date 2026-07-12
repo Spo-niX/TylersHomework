@@ -1,0 +1,70 @@
+using System.Text.Json;
+using Microsoft.Data.Sqlite;
+using TylersHomework.Core.Database.Models;
+
+namespace TylersHomework.Core.Database.Repositories;
+
+public class UserTaskRepository
+{
+    private SqliteConnection GetConnection() => DatabaseConnection.GetConnection();
+    public async Task SaveAsync(UserTask task)
+    {
+        using var connection = DatabaseConnection.GetConnection();
+        
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            INSERT OR REPLACE INTO UserTasks 
+                (OwnerId, Mode, Hero, Slots)
+            VALUES 
+                (@ownerId, @mode, @hero, @slots)
+        ";
+        
+        cmd.Parameters.AddWithValue("@ownerId", task.OwnerId);
+        cmd.Parameters.AddWithValue("@mode", task.Mode);
+        cmd.Parameters.AddWithValue("@hero", task.Hero);
+        var json = JsonSerializer.Serialize(task.Slots);
+        cmd.Parameters.AddWithValue("@slots", json);
+        
+        await cmd.ExecuteNonQueryAsync();
+    }
+    
+    public async Task<UserTask> GetByTelegramIdAsync(int ownerId)
+    {
+        using var connection = DatabaseConnection.GetConnection();
+        
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT * FROM Users WHERE OwnerId = @ownerId";
+        cmd.Parameters.AddWithValue("@ownerId", ownerId);
+        
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            return new UserTask
+            {
+                Id = reader.GetInt32(0),
+                OwnerId = reader.GetInt32(1),
+                Mode = reader.GetInt32(2),
+                Hero = reader.GetInt32(3),
+                Slots = JsonSerializer.Deserialize<List<int>>(reader.GetString(4))
+            };
+        }
+        
+        return null!;
+    }
+    
+    public async Task<bool> ExistsAsync(int ownerId)
+    {
+        var userTask = await GetByTelegramIdAsync(ownerId);
+        return userTask != null;
+    }
+    
+    public async Task<int> GetCountAsync()
+    {
+        using var connection = DatabaseConnection.GetConnection();
+        
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM Users";
+        
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+}

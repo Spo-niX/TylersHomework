@@ -85,6 +85,19 @@ public class CallbackHandlerHelp
                 );
 
                 break;
+            case "getMode":
+                if(!isEx)
+                {
+                    await bot.EditMessageTextAsync(
+                        chatId, messageId,
+                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                        cancellationToken: ct
+                    );
+                    break;
+                }
+                
+
+                break;
 
         }
     }
