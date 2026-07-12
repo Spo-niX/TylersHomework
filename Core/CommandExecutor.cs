@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using TylersHomework.Attributes;
@@ -8,9 +9,10 @@ namespace TylersHomework.Core;
 public class CommandExecutor
 {
     private readonly Dictionary<string, Type> _commands = new();
-
-    public CommandExecutor()
+    private readonly IServiceProvider _serviceProvider;
+    public CommandExecutor(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         // Автоматически находим все классы с атрибутом [Command]
         var assembly = Assembly.GetExecutingAssembly();
         var commandTypes = assembly.GetTypes()
@@ -20,7 +22,7 @@ public class CommandExecutor
         {
             var attribute = type.GetCustomAttribute<CommandAttribute>()!;
             _commands[attribute.Name] = type;
-            Console.WriteLine($"✅ Загружена команда: {attribute.Name} -> {type.Name}");
+            Console.WriteLine($"Загружена команда: {attribute.Name} -> {type.Name}");
         }
 
         if (_commands.Count == 0)
@@ -41,7 +43,7 @@ public class CommandExecutor
         {
             try
             {
-                var commandInstance = Activator.CreateInstance(commandType);
+                var commandInstance = ActivatorUtilities.CreateInstance(_serviceProvider, commandType);
                 
                 var method = commandType.GetMethod("ExecuteAsync");
                 if (method != null)
