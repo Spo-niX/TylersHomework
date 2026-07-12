@@ -68,7 +68,7 @@ var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
 var _userRepo = ServiceProvider.GetRequiredService<UserRepository>();
 
 var botClient = new TelegramBotClient(token, httpClient);
-var commandExecutor = new CommandExecutor();  
+var commandExecutor = new CommandExecutor(ServiceProvider);  
 
 using var cts = new CancellationTokenSource();
 
