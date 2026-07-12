@@ -41,5 +41,25 @@ public class StartCommand
                 cancellationToken: cancellationToken
             );
         }
+        else
+        {
+            var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
+
+            await botClient.SendTextMessageAsync(
+                        message.Chat.Id,
+                        $"Здравия желаю, агент {agent.AgentName}!",
+                        replyMarkup: GetMainMenuKeyboard(),
+                        cancellationToken: cancellationToken
+                    );
+        }
     }
+    private InlineKeyboardMarkup GetMainMenuKeyboard()
+    {
+        return new InlineKeyboardMarkup(new[]
+        {
+            new[] { InlineKeyboardButton.WithCallbackData("Профиль", "profile") },
+            new[] { InlineKeyboardButton.WithCallbackData("Задания", "settings") }
+        });
+    }
+
 }
