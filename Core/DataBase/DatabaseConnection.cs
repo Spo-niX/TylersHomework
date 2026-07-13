@@ -34,5 +34,16 @@ public static class DatabaseConnection
             )
         ";
         cmd.ExecuteNonQuery();
+        cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            CREATE TABLE IF NOT EXISTS UsersTasks (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                OwnerId INTEGER UNIQUE NOT NULL,
+                Mode INTEGER,
+                Hero INTEGER,
+                Slots TEXT
+            )
+        ";
+        cmd.ExecuteNonQuery();
     }
 }

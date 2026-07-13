@@ -28,12 +28,12 @@ public class UserTaskRepository
         await cmd.ExecuteNonQueryAsync();
     }
     
-    public async Task<UserTask> GetByTelegramIdAsync(int ownerId)
+    public async Task<UserTask> GetByIdAsync(int ownerId)
     {
         using var connection = DatabaseConnection.GetConnection();
         
         var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Users WHERE OwnerId = @ownerId";
+        cmd.CommandText = "SELECT * FROM UserTasks WHERE OwnerId = @ownerId";
         cmd.Parameters.AddWithValue("@ownerId", ownerId);
         
         using var reader = await cmd.ExecuteReaderAsync();
@@ -45,7 +45,7 @@ public class UserTaskRepository
                 OwnerId = reader.GetInt32(1),
                 Mode = reader.GetInt32(2),
                 Hero = reader.GetInt32(3),
-                Slots = JsonSerializer.Deserialize<List<int>>(reader.GetString(4))
+                Slots = JsonSerializer.Deserialize<List<string>>(reader.GetString(4))
             };
         }
         
@@ -54,7 +54,7 @@ public class UserTaskRepository
     
     public async Task<bool> ExistsAsync(int ownerId)
     {
-        var userTask = await GetByTelegramIdAsync(ownerId);
+        var userTask = await GetByIdAsync(ownerId);
         return userTask != null;
     }
     
@@ -63,7 +63,7 @@ public class UserTaskRepository
         using var connection = DatabaseConnection.GetConnection();
         
         var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM Users";
+        cmd.CommandText = "SELECT COUNT(*) FROM UserTasks";  
         
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
