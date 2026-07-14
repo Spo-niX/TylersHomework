@@ -220,7 +220,22 @@ public class CallbackHandlerHelp
                 await getStarterTask(ids, eIds, rnd, callback, bot, ct, chatId, messageId, false);
                 break;
             case "task1":
-
+                await getTask(callback, bot, ct, chatId, messageId, 0);
+                break;
+            case "task2":
+                await getTask(callback, bot, ct, chatId, messageId, 1);
+                break;
+            case "task3":
+                UserStates.SetState(callback.From.Id, "waitId");
+                await getTask(callback, bot, ct, chatId, messageId, 2);
+                break;
+            case "giveUp":
+                agent.Mmr -= 25 + rnd.Next(-5, 6);
+                if(agent.Mmr < 0)
+                {
+                    agent.Mmr = 0; 
+                }
+                UserTaskState.ClearState(callback.From.Id);
                 break;
         }
     }
@@ -250,6 +265,14 @@ public class CallbackHandlerHelp
             new[] { InlineKeyboardButton.WithCallbackData("Задние 1", "task1") },
             new[] { InlineKeyboardButton.WithCallbackData("Задание 2", "task2") },
             new[] { InlineKeyboardButton.WithCallbackData("Задание 3", "task3") },
+        });
+    }
+
+    private InlineKeyboardMarkup getGiveUpKB()
+    {
+        return new InlineKeyboardMarkup(new[]
+        {
+            new[] { InlineKeyboardButton.WithCallbackData("Сдаться", "giveUp") },
         });
     }
 
@@ -337,6 +360,7 @@ public class CallbackHandlerHelp
                         2 - {GetHeroNameSorted(eIds[1])}
                         3 - {GetHeroNameSorted(eIds[2])}
                         """,
+                replyMarkup: getTaskKB(),
                 cancellationToken: ct
         );
     }
@@ -353,12 +377,13 @@ public class CallbackHandlerHelp
 
             Режим - {(task.Mode == 0 ? "turbo" : "all pick")}
             Герой - {GetHeroNameSorted(task.Hero)}
-            Предметы - {task.Slots[0]}, {task.Slots[1]}, {task.Slots[2]}, {task.Slots[3]}, {task.Slots[4]}, {task.Slots[5]}
+            Предметы - {task.Slots![0]}, {task.Slots[1]}, {task.Slots[2]}, {task.Slots[3]}, {task.Slots[4]}, {task.Slots[5]}
             Цель - победа, с выполнением заданий
 
-            Отправьте id матча, как только будете готовы
+            Отправьте id матча, как только будете готовы, или сдайтесь, и потеряйте MMR
             """,
-             cancellationToken: ct);
+            replyMarkup: getGiveUpKB(),
+            cancellationToken: ct);
     }
 
 
@@ -738,7 +763,7 @@ public class CallbackHandlerHelp
             case 1018: return "winter_greevil_treat";
             case 1019: return "winter_greevil_garbage";
             case 1020: return "winter_greevil_chewy";
-            default: return null!;
+            default: return "undefined";
         }
     }
 

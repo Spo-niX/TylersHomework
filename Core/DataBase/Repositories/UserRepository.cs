@@ -13,15 +13,16 @@ public class UserRepository
         var cmd = connection.CreateCommand();
         cmd.CommandText = @"
             INSERT OR REPLACE INTO Users 
-                (TgId, AgentName, Mmr, TaskCompleted)
+                (TgId, AgentName, Mmr, TaskCompleted, SteamID)
             VALUES 
-                (@tgId, @name, @mmr, @tasks)
+                (@tgId, @name, @mmr, @tasks, @steamid)
         ";
         
         cmd.Parameters.AddWithValue("@tgId", user.TgId);
         cmd.Parameters.AddWithValue("@name", user.AgentName);
         cmd.Parameters.AddWithValue("@mmr", user.Mmr);
         cmd.Parameters.AddWithValue("@tasks", user.TaskCompleted);
+        cmd.Parameters.AddWithValue("@steamid", user.SteamId);
         
         await cmd.ExecuteNonQueryAsync();
     }
@@ -43,7 +44,8 @@ public class UserRepository
                 TgId = reader.GetInt64(1),
                 AgentName = reader.IsDBNull(2) ? null : reader.GetString(2),
                 Mmr = reader.GetInt32(3),
-                TaskCompleted = reader.GetInt32(4)
+                TaskCompleted = reader.GetInt32(4),
+                SteamId = reader.GetInt64(5)
             };
         }
         
@@ -56,6 +58,11 @@ public class UserRepository
         return user != null;
     }
     
+    public async Task<long> stId(long telegramId)
+    {
+        var user = await GetByTelegramIdAsync(telegramId);
+        return user.SteamId;
+    }
     public async Task<int> GetCountAsync()
     {
         using var connection = DatabaseConnection.GetConnection();

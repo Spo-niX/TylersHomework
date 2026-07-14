@@ -30,7 +30,8 @@ public static class DatabaseConnection
                 TgId INTEGER UNIQUE NOT NULL,
                 AgentName TEXT,
                 Mmr INTEGER,
-                TaskCompleted INTEGER
+                TaskCompleted INTEGER,
+                SteamId INTEGER UNIQUE NOT NULL
             )
         ";
         cmd.ExecuteNonQuery();

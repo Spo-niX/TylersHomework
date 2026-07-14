@@ -37,7 +37,7 @@ public class CommandExecutor
 
         var commandName = message.Text.Trim();
 
-        Console.WriteLine($"📩 Получена команда: {commandName}");
+        Console.WriteLine($"Получена команда: {commandName}");
 
         if (_commands.TryGetValue(commandName, out var commandType))
         {

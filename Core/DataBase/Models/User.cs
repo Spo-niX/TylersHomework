@@ -7,4 +7,5 @@ public class User
     public string? AgentName { get; set; }
     public int Mmr { get; set; }
     public int TaskCompleted { get; set; }
+    public long SteamId {get ; set; }
 }

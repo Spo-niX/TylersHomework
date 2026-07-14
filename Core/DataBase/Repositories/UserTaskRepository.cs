@@ -28,7 +28,7 @@ public class UserTaskRepository
         await cmd.ExecuteNonQueryAsync();
     }
     
-    public async Task<UserTask> GetByIdAsync(int ownerId)
+    public async Task<UserTask> GetByIdAsync(long ownerId)
     {
         using var connection = DatabaseConnection.GetConnection();
         
@@ -42,7 +42,7 @@ public class UserTaskRepository
             return new UserTask
             {
                 Id = reader.GetInt32(0),
-                OwnerId = reader.GetInt32(1),
+                OwnerId = reader.GetInt64(1),
                 Mode = reader.GetInt32(2),
                 Hero = reader.GetInt32(3),
                 Slots = JsonSerializer.Deserialize<List<string>>(reader.GetString(4))

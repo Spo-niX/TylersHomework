@@ -12,6 +12,9 @@ using System.Net;
 using System.Net.Sockets;
 using Telegram.Bot.Types.ReplyMarkups;
 using System.Net.Http.Headers;
+using Telegram.Bot.Requests;
+using System.Text.Json;
+using TylersHomework.Core.Database.Models;
 
 var proxy = new WebProxy("socks5://127.0.0.1:1088");
 
@@ -26,10 +29,7 @@ List<string> AgentNames = new List<string>
     "ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", 
     "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIET"
 };
-
-// 3. Принудительно подменяем DNS
 handler.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-// Создаём кастомный SocketsHttpHandler (для .NET Core)
 var socketsHandler = new SocketsHttpHandler
 {
     Proxy = proxy,
@@ -66,6 +66,7 @@ builder.Services.AddSingleton<CallbackHandlerHelp>();
 var ServiceProvider = builder.Services.BuildServiceProvider();
 var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
 var _userRepo = ServiceProvider.GetRequiredService<UserRepository>();
+var _taskRepo = ServiceProvider.GetRequiredService<UserTaskRepository>();
 
 var botClient = new TelegramBotClient(token, httpClient);
 var commandExecutor = new CommandExecutor(ServiceProvider);  
@@ -121,6 +122,85 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                         "Позывной успешно прошёл валидацию!", 
                         cancellationToken: cancellationToken);
                 }
+            }
+            else if(state == "waitId")
+            {
+                var matchJS = await httpClient.GetAsync($"https://api.opendota.com/api/matches/{text}");
+                
+                if (!matchJS.IsSuccessStatusCode)
+                {
+                    var errorContent = await matchJS.Content.ReadAsStringAsync();
+                    if (matchJS.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        await client.SendTextMessageAsync(
+                            chatId,
+                            "Матч по такому ID не был найден. Проверьте ID",
+                            cancellationToken: cancellationToken
+                        );
+                        return;
+                    }
+                    Console.WriteLine($"Ошибка API!!!!!! {matchJS.StatusCode} - {errorContent}");
+                    await client.SendTextMessageAsync(
+                            chatId,
+                            "Внешнаяя ошибка API. Агентсво борется над её устранением ",
+                            cancellationToken: cancellationToken
+                        );
+                    return;
+                }
+                
+                var match = JsonSerializer.Deserialize<MatchData>(matchJS.ToString());
+
+                var agentSteam = await _userRepo.stId(message.From.Id);
+                var agPlr = match!.Players.FirstOrDefault(x => x.AccountId == agentSteam);
+                var agPos = match.Players.IndexOf(agPlr!);
+                if(agPlr == null)
+                {
+                    await client.SendTextMessageAsync(
+                        chatId,
+                        "Ваше присутствие в игре не обнаружено! Проверьте ID матча",
+                        cancellationToken: cancellationToken
+                    );
+                    return;
+                }
+                UserStates.ClearState(message.From.Id);
+
+                if(!((match.RadiantWin && agPos <= 4) || (!match.RadiantWin && agPos >= 5)))
+                {
+                    await client.SendTextMessageAsync(
+                        chatId,
+                        "Вы проиграли!",
+                        cancellationToken: cancellationToken
+                    );
+
+                    UserTaskState.ClearState(message.From.Id);
+                    var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
+                    var rnd = new Random();
+
+                    agent.Mmr -= 25 + rnd.Next(-5, 6);
+                    if(agent.Mmr < 0)
+                    {
+                        agent.Mmr = 0; 
+                    }
+                    return;
+                }
+
+                UserTask task = await _taskRepo.GetByIdAsync(message.From.Id);
+                
+                if(!task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item0)) ||
+                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item1)) ||
+                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item2)) ||
+                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item3)) ||
+                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item4)) ||
+                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item5)))
+                {
+                    UserTaskState.ClearState(message.From.Id);
+                    var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
+                    var rnd = new Random();
+
+                    agent.Mmr -= 25 + rnd.Next(-5, 6);
+                    return;
+                }
+                
             }
             else
             {
