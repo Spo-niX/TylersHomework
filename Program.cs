@@ -61,6 +61,7 @@ var dbPath = "bot.db";
 DatabaseConnection.Initialize(dbPath);
 
 builder.Services.AddSingleton<UserRepository>();
+builder.Services.AddSingleton<UserTaskRepository>();
 builder.Services.AddSingleton<CallbackHandlerHelp>();
 
 var ServiceProvider = builder.Services.BuildServiceProvider();
