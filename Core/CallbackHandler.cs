@@ -402,7 +402,8 @@ public class CallbackHandlerHelp
             OwnerId = ownerId,
             Hero = hero,
             Mode = isTurbo ? 0 : 1,
-            Slots = slt
+            Slots = slt,
+            IsActive = true
         };
     }
 

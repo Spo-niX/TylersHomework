@@ -153,6 +153,9 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 var agentSteam = await _userRepo.stId(message.From.Id);
                 var agPlr = match!.Players.FirstOrDefault(x => x.AccountId == agentSteam);
                 var agPos = match.Players.IndexOf(agPlr!);
+                var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
+                var rnd = new Random();
+
                 if(agPlr == null)
                 {
                     await client.SendTextMessageAsync(
@@ -168,13 +171,12 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 {
                     await client.SendTextMessageAsync(
                         chatId,
-                        "Вы проиграли!",
+                        "Вы проиграли! Задание провалено!",
+                        replyMarkup: GetExKB(),
                         cancellationToken: cancellationToken
                     );
 
                     UserTaskState.ClearState(message.From.Id);
-                    var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
-                    var rnd = new Random();
 
                     agent.Mmr -= 25 + rnd.Next(-5, 6);
                     if(agent.Mmr < 0)
@@ -185,7 +187,6 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 }
 
                 UserTask task = await _taskRepo.GetByIdAsync(message.From.Id);
-                
                 if(!task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item0)) ||
                 !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item1)) ||
                 !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item2)) ||
@@ -194,13 +195,31 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item5)))
                 {
                     UserTaskState.ClearState(message.From.Id);
-                    var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
-                    var rnd = new Random();
 
                     agent.Mmr -= 25 + rnd.Next(-5, 6);
+                    if(agent.Mmr < 0)
+                    {
+                        agent.Mmr = 0; 
+                    }
+
+                    await client.SendTextMessageAsync(
+                        chatId,
+                        "Обнаружено несоответствие ваших предметов, с предметами в задании! Задание провалено!",
+                        replyMarkup: GetExKB(),
+                        cancellationToken: cancellationToken
+                    );
                     return;
                 }
-                
+
+                await client.SendTextMessageAsync(
+                        chatId,
+                        "Задание выполнено успешно! Поздравляю, агент!",
+                        replyMarkup: GetExKB(),
+                        cancellationToken: cancellationToken
+                    );
+                agent.Mmr += 25 + rnd.Next(-5, 6);
+                agent.TaskCompleted++;
+                task.IsActive = false;
             }
             else
             {
@@ -243,4 +262,15 @@ async Task createAgent(long tgId, string text)
         TaskCompleted = 0,
 
     });
+}
+
+InlineKeyboardMarkup GetExKB()
+{
+    return new InlineKeyboardMarkup(
+        new[]
+        {
+            new[] {InlineKeyboardButton.WithCallbackData("Вернуться в меню", "menu")}
+        }
+    );
+    
 }

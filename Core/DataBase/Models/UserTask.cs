@@ -7,4 +7,5 @@ public class UserTask
     public int Mode { get; set; }
     public int Hero { get; set; }
     public List<string>? Slots { get; set; }
+    public bool IsActive { get; set; }
 }

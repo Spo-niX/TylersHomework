@@ -14,9 +14,9 @@ public class UserTaskRepository
         var cmd = connection.CreateCommand();
         cmd.CommandText = @"
             INSERT OR REPLACE INTO UserTasks 
-                (OwnerId, Mode, Hero, Slots)
+                (OwnerId, Mode, Hero, Slots, IsActive)
             VALUES 
-                (@ownerId, @mode, @hero, @slots)
+                (@ownerId, @mode, @hero, @slots, @isactive)
         ";
         
         cmd.Parameters.AddWithValue("@ownerId", task.OwnerId);
@@ -24,6 +24,7 @@ public class UserTaskRepository
         cmd.Parameters.AddWithValue("@hero", task.Hero);
         var json = JsonSerializer.Serialize(task.Slots);
         cmd.Parameters.AddWithValue("@slots", json);
+        cmd.Parameters.AddWithValue("@isactive", task.IsActive);
         
         await cmd.ExecuteNonQueryAsync();
     }
@@ -33,7 +34,7 @@ public class UserTaskRepository
         using var connection = DatabaseConnection.GetConnection();
         
         var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM UserTasks WHERE OwnerId = @ownerId";
+        cmd.CommandText = "SELECT * FROM UserTasks WHERE OwnerId = @ownerId AND IsActive = 1";
         cmd.Parameters.AddWithValue("@ownerId", ownerId);
         
         using var reader = await cmd.ExecuteReaderAsync();
@@ -45,7 +46,8 @@ public class UserTaskRepository
                 OwnerId = reader.GetInt64(1),
                 Mode = reader.GetInt32(2),
                 Hero = reader.GetInt32(3),
-                Slots = JsonSerializer.Deserialize<List<string>>(reader.GetString(4))
+                Slots = JsonSerializer.Deserialize<List<string>>(reader.GetString(4)),
+                IsActive = reader.GetInt64(5) == 1
             };
         }
         
