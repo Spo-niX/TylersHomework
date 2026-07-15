@@ -17,4 +17,12 @@ public static class UserStates
     {
         _states.Remove(tgId);
     }
+    public static void ClearAllState()
+    {
+        for(int i = 0; i < _states.Count; i++)
+        {
+            _states.Remove(i);
+        }
+    }
+
 }

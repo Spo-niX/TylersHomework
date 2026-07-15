@@ -16,47 +16,53 @@ using Telegram.Bot.Requests;
 using System.Text.Json;
 using TylersHomework.Core.Database.Models;
 
-var proxy = new WebProxy("socks5://127.0.0.1:1088");
-
-// 2. Создаём Handler с кастомным резолвингом
-var handler = new HttpClientHandler
-{
-    Proxy = proxy,
-    UseProxy = true
-};
 List<string> AgentNames = new List<string>
 {
     "ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", 
     "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIET"
 };
-handler.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-var socketsHandler = new SocketsHttpHandler
-{
-    Proxy = proxy,
-    UseProxy = true,
-    ConnectCallback = async (context, cancellationToken) =>
-    {
-        // Если запрос к api.telegram.org — подменяем IP
-        if (context.DnsEndPoint.Host == "api.telegram.org")
-        {
-            var ipAddress = IPAddress.Parse("149.154.167.99");
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            await socket.ConnectAsync(ipAddress, context.DnsEndPoint.Port);
-            return new NetworkStream(socket, ownsSocket: true);
-        }
-        // Для всех остальных запросов — стандартное поведение
-        var defaultSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        await defaultSocket.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port);
-        return new NetworkStream(defaultSocket, ownsSocket: true);
-    }
-};
-
-var httpClient = new HttpClient(socketsHandler);
 
 var builder = Host.CreateApplicationBuilder();
+builder.Configuration.AddEnvironmentVariables();
+var httpClient = new HttpClient();
 
-string token = builder.Configuration["token"]!; 
+builder.Configuration.AddUserSecrets<Program>();
 
+
+if(builder.Configuration["useProxy"] == "yes")
+{
+    var proxy = new WebProxy("socks5://127.0.0.1:1088");
+
+    var handler = new HttpClientHandler
+    {
+        Proxy = proxy,
+        UseProxy = true
+    };
+
+    handler.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+    var socketsHandler = new SocketsHttpHandler
+    {
+        Proxy = proxy,
+        UseProxy = true,
+        ConnectCallback = async (context, cancellationToken) =>
+        {
+            if (context.DnsEndPoint.Host == "api.telegram.org")
+            {
+                var ipAddress = IPAddress.Parse("149.154.167.99");
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                await socket.ConnectAsync(ipAddress, context.DnsEndPoint.Port);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            var defaultSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            await defaultSocket.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port);
+            return new NetworkStream(defaultSocket, ownsSocket: true);
+        }
+    };
+
+    httpClient = new HttpClient(socketsHandler);
+}
+
+string token = builder.Configuration["token"];
 var dbPath = "bot.db";
 DatabaseConnection.Initialize(dbPath);
 
@@ -69,6 +75,7 @@ var CallbackHandler = ServiceProvider.GetRequiredService<CallbackHandlerHelp>();
 var _userRepo = ServiceProvider.GetRequiredService<UserRepository>();
 var _taskRepo = ServiceProvider.GetRequiredService<UserTaskRepository>();
 
+var app = builder.Build();
 var botClient = new TelegramBotClient(token, httpClient);
 var commandExecutor = new CommandExecutor(ServiceProvider);  
 
@@ -85,7 +92,8 @@ botClient.StartReceiving(
     receiverOptions: receiverOptions,
     cancellationToken: cts.Token
 );
-
+UserTaskState.ClearAllState();
+UserStates.ClearAllState();
 Console.ReadLine();
 cts.Cancel();
 
@@ -117,10 +125,33 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                     }
                     
                     UserStates.ClearState(message.From.Id);
+                    UserStates.SetState(message.From.Id, "waitSteam");
 
                     await client.SendTextMessageAsync(
                         chatId, 
-                        "Позывной успешно прошёл валидацию!", 
+                        "Позывной успешно прошёл валидацию! Теперь, отправьте ваш Steam ID", 
+                        cancellationToken: cancellationToken);
+                }
+            }
+            else if(state == "waitSteam")
+            {
+                if (!text!.All(x => char.IsDigit(x)))
+                {
+                    await client.SendTextMessageAsync(
+                        chatId, "Неверный формат. Попробуйте ещё раз!", 
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+                else
+                {
+                    var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
+                    agent.SteamId = Convert.ToInt64(text);
+                    UserStates.ClearState(message.From.Id);
+
+                    await client.SendTextMessageAsync(
+                        chatId, 
+                        "Ваша регистрация успешно закончена!",
+                        replyMarkup: GetExKB(), 
                         cancellationToken: cancellationToken);
                 }
             }
@@ -270,7 +301,7 @@ InlineKeyboardMarkup GetExKB()
     return new InlineKeyboardMarkup(
         new[]
         {
-            new[] {InlineKeyboardButton.WithCallbackData("Вернуться в меню", "menu")}
+            new[] {InlineKeyboardButton.WithCallbackData("В меню", "menu")}
         }
     );
     

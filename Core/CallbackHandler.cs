@@ -220,9 +220,11 @@ public class CallbackHandlerHelp
                 await getStarterTask(ids, eIds, rnd, callback, bot, ct, chatId, messageId, false);
                 break;
             case "task1":
+                UserStates.SetState(callback.From.Id, "waitId");
                 await getTask(callback, bot, ct, chatId, messageId, 0);
                 break;
             case "task2":
+                UserStates.SetState(callback.From.Id, "waitId");
                 await getTask(callback, bot, ct, chatId, messageId, 1);
                 break;
             case "task3":
@@ -347,7 +349,7 @@ public class CallbackHandlerHelp
 
         eIds = ids.ToList();
 
-        eIds.Append(isTurbo ? 0 : 1);
+        eIds.Add(isTurbo ? 0 : 1);
 
         UserTaskState.SetState(callback.From.Id, eIds);
 
@@ -392,10 +394,10 @@ public class CallbackHandlerHelp
         var rnd = new Random();
 
         var slt = new List<string>();
-        slt[1] = GetBootsItem(rnd.Next(1, 6));
+        slt.Add(GetBootsItem(rnd.Next(1, 6)));
         for (byte i = 1; i < 6; i++)
         {
-            slt.Append(getItem(rnd.Next(0, 68)));
+            slt.Add(getItem(rnd.Next(0, 68)));
         }
         return new UserTask
         {
