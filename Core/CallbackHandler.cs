@@ -244,8 +244,8 @@ public class CallbackHandlerHelp
                 }
                 UserTaskState.ClearState(callback.From.Id);
                 UserStates.ClearState(callback.From.Id);
-                await bot.EditMessageTextAsync(
-                        chatId, messageId,
+                await bot.SendTextMessageAsync(
+                        chatId,
                         $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
                         replyMarkup: GetMainMenuKeyboard(),
                         cancellationToken: ct
