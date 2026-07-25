@@ -246,7 +246,7 @@ public class CallbackHandlerHelp
                 UserStates.ClearState(callback.From.Id);
                 var stream1 = System.IO.File.OpenRead("images/menu.jpg");
                 await bot.SendPhotoAsync(
-                    messageId,
+                    chatId,
                     photo: new InputFileStream(stream1),
                     caption: $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
                     replyMarkup: GetMainMenuKeyboard(),
