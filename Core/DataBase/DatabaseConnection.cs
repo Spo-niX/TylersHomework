@@ -37,12 +37,13 @@ public static class DatabaseConnection
         cmd.ExecuteNonQuery();
         cmd = connection.CreateCommand();
         cmd.CommandText = @"
-            CREATE TABLE IF NOT EXISTS UsersTasks (
+            CREATE TABLE IF NOT EXISTS UserTasks (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 OwnerId INTEGER UNIQUE NOT NULL,
                 Mode INTEGER,
                 Hero INTEGER,
-                Slots TEXT
+                Slots TEXT,
+                IsActive INTEGER
             )
         ";
         cmd.ExecuteNonQuery();

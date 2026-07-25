@@ -23,17 +23,26 @@ public class MenuCommand
         {
             var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);   
 
-            await botClient.SendTextMessageAsync(
+            var stream = System.IO.File.OpenRead("images/menu.jpg");
+            await botClient.SendPhotoAsync(
                 message.Chat.Id,
-                $"Здравия желаю, агент {agent.AgentName}!",
+                photo: new InputFileStream(stream),
+                caption: $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
                 replyMarkup: GetMainMenuKeyboard(),
                 cancellationToken: cancellationToken);
+
+            var media = new List<IAlbumInputMedia>();
+            media.Add(new InputMediaPhoto(new InputFileStream(stream)) { Caption = "🗡️ Меч" });
+            media.Add(new InputMediaPhoto(new InputFileStream(stream)) { Caption = "🛡️ Щит" });
+            media.Add(new InputMediaPhoto(new InputFileStream(stream)) { Caption = "💍 Кольцо" });
+
+            await botClient.SendMediaGroupAsync(message.From.Id, media, cancellationToken: cancellationToken);
         }
         else
         {
             await botClient.SendTextMessageAsync(
                 message.Chat.Id,
-                "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                "✖︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ✖︎",
                 cancellationToken: cancellationToken);
         }
     }
@@ -42,8 +51,8 @@ public class MenuCommand
         {
             return new InlineKeyboardMarkup(new[]
             {
-                new[] { InlineKeyboardButton.WithCallbackData("Профиль", "profile") },
-                new[] { InlineKeyboardButton.WithCallbackData("Задания", "settings") }
+                new[] { InlineKeyboardButton.WithCallbackData("⛑︎ Профиль", "profile") },
+                new[] { InlineKeyboardButton.WithCallbackData("✉︎ Задания", "settings") }
             });
         }
 }

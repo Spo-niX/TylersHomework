@@ -96,7 +96,6 @@ UserTaskState.ClearAllState();
 UserStates.ClearAllState();
 Console.ReadLine();
 cts.Cancel();
-
 async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationToken cancellationToken)
 {
     Console.WriteLine($"Получено обновление: {update.Type}");
@@ -113,7 +112,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 if (text!.Length < 3 || text.Length > 10 || !text.All(x => char.IsLetter(x)))
                 {
                     await client.SendTextMessageAsync(
-                        chatId, "Позывной не прошёл валидацию. Пожалуйста, попробуйте ещё раз", 
+                        chatId, "✖︎ Позывной не прошёл валидацию. Пожалуйста, попробуйте ещё раз ✖︎", 
                         cancellationToken: cancellationToken);
                     return;
                 }
@@ -129,7 +128,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
 
                     await client.SendTextMessageAsync(
                         chatId, 
-                        "Позывной успешно прошёл валидацию! Теперь, отправьте ваш Steam ID", 
+                        "✔︎ Позывной успешно прошёл валидацию! Теперь, отправьте ваш Steam ID ✔︎", 
                         cancellationToken: cancellationToken);
                 }
             }
@@ -138,7 +137,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 if (!text!.All(x => char.IsDigit(x)))
                 {
                     await client.SendTextMessageAsync(
-                        chatId, "Неверный формат. Попробуйте ещё раз!", 
+                        chatId, "✖︎ Неверный формат. Попробуйте ещё раз! ✖︎", 
                         cancellationToken: cancellationToken);
                     return;
                 }
@@ -146,11 +145,12 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 {
                     var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
                     agent.SteamId = Convert.ToInt64(text);
+                    await _userRepo.SaveAsync(agent);
                     UserStates.ClearState(message.From.Id);
 
                     await client.SendTextMessageAsync(
                         chatId, 
-                        "Ваша регистрация успешно закончена!",
+                        "✔︎ Ваша регистрация успешно закончена! ✔︎",
                         replyMarkup: GetExKB(), 
                         cancellationToken: cancellationToken);
                 }
@@ -158,6 +158,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
             else if(state == "waitId")
             {
                 var matchJS = await httpClient.GetAsync($"https://api.opendota.com/api/matches/{text}");
+                var js = await matchJS.Content.ReadAsStringAsync();
                 
                 if (!matchJS.IsSuccessStatusCode)
                 {
@@ -166,7 +167,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                     {
                         await client.SendTextMessageAsync(
                             chatId,
-                            "Матч по такому ID не был найден. Проверьте ID",
+                            "✖︎ Матч по такому ID не был найден. Проверьте ID ✖︎",
                             cancellationToken: cancellationToken
                         );
                         return;
@@ -174,36 +175,72 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                     Console.WriteLine($"Ошибка API!!!!!! {matchJS.StatusCode} - {errorContent}");
                     await client.SendTextMessageAsync(
                             chatId,
-                            "Внешнаяя ошибка API. Агентсво борется над её устранением ",
+                            "✖︎ Внешнаяя ошибка API. Агентсво борется над её устранением ✖︎",
                             cancellationToken: cancellationToken
                         );
                     return;
                 }
                 
-                var match = JsonSerializer.Deserialize<MatchData>(matchJS.ToString());
+                using var doc = JsonDocument.Parse(js.ToString());
+                var root = doc.RootElement;
+                
+                var players = root.GetProperty("players");
+                var heroId = -1;
+                short isWin = 0;
+                bool isFound = false;
 
-                var agentSteam = await _userRepo.stId(message.From.Id);
-                var agPlr = match!.Players.FirstOrDefault(x => x.AccountId == agentSteam);
-                var agPos = match.Players.IndexOf(agPlr!);
+                List<string> items = new List<string>();
+                JsonElement agJs = new JsonElement();
+
+                UserTask task = await _taskRepo.GetByIdAsync(message.From.Id);
+                if(task == null)
+                {
+                    await client.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Задание не найдено! Возьмите новое ✖︎",
+                        cancellationToken: cancellationToken
+                    );
+                    return; 
+                }
+                foreach (var player in players.EnumerateArray())
+                {
+                    heroId = player.GetProperty("hero_id").GetInt32();
+                    if(true)
+                    {
+                        isFound = true;
+                        agJs = player;
+                        player.TryGetProperty("win", out JsonElement winElement);
+
+                        isWin = winElement.GetInt16();
+                        
+                        for (int i = 0; i <= 5; i++)
+                        {
+                            var itemProp = player.GetProperty($"item_{i}");
+                            items.Add(CallbackHandler.GetItemName(itemProp.GetInt32()));
+                        }
+                    }
+                }
+
+                if(!isFound)
+                {
+                    await client.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Ваше присутствие в игре не обнаружено! Проверьте ID матча ✖︎",
+                        cancellationToken: cancellationToken
+                    );
+                    return;    
+                }         
+               
                 var agent = await _userRepo.GetByTelegramIdAsync(message.From.Id);
                 var rnd = new Random();
 
-                if(agPlr == null)
-                {
-                    await client.SendTextMessageAsync(
-                        chatId,
-                        "Ваше присутствие в игре не обнаружено! Проверьте ID матча",
-                        cancellationToken: cancellationToken
-                    );
-                    return;
-                }
                 UserStates.ClearState(message.From.Id);
 
-                if(!((match.RadiantWin && agPos <= 4) || (!match.RadiantWin && agPos >= 5)))
+                if(isWin == 0)
                 {
                     await client.SendTextMessageAsync(
                         chatId,
-                        "Вы проиграли! Задание провалено!",
+                        "✖︎ Вы проиграли! Задание провалено! ✖︎",
                         replyMarkup: GetExKB(),
                         cancellationToken: cancellationToken
                     );
@@ -218,13 +255,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                     return;
                 }
 
-                UserTask task = await _taskRepo.GetByIdAsync(message.From.Id);
-                if(!task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item0)) ||
-                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item1)) ||
-                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item2)) ||
-                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item3)) ||
-                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item4)) ||
-                !task.Slots!.Contains(CallbackHandler.GetItemName(agPlr.Item5)))
+                if(!items.All(x => task.Slots!.Contains(x) || CallbackHandler.GetItemId(x) == -1))
                 {
                     UserTaskState.ClearState(message.From.Id);
 
@@ -236,7 +267,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
 
                     await client.SendTextMessageAsync(
                         chatId,
-                        "Обнаружено несоответствие ваших предметов, с предметами в задании! Задание провалено!",
+                        "✖︎ Обнаружено несоответствие ваших предметов, с предметами в задании! Задание провалено! ✖︎",
                         replyMarkup: GetExKB(),
                         cancellationToken: cancellationToken
                     );
@@ -245,13 +276,15 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
 
                 await client.SendTextMessageAsync(
                         chatId,
-                        "Задание выполнено успешно! Поздравляю, агент!",
+                        "✔︎ Задание выполнено успешно! Поздравляю, агент! ✔︎",
                         replyMarkup: GetExKB(),
                         cancellationToken: cancellationToken
                     );
                 agent.Mmr += 25 + rnd.Next(-5, 6);
                 agent.TaskCompleted++;
                 task.IsActive = false;
+                await _userRepo.SaveAsync(agent);
+                await _taskRepo.SaveAsync(task);
             }
             else
             {
@@ -266,13 +299,13 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
         {
             await botClient.SendTextMessageAsync(
                 chatId: update.Message!.Chat.Id,
-                text: "Неверный формат данных",
+                text: "✖︎ Неверный формат данных ✖︎",
                 cancellationToken: cancellationToken);
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Ошибка в обработчике: {ex.Message}");
+        Console.WriteLine($"✖︎ Ошибка в обработчике: {ex.Message}");
     }
 }
 
@@ -281,7 +314,6 @@ Task HandleErrorAsync(ITelegramBotClient client, Exception exception, Cancellati
     Console.WriteLine($"ошибка: {exception.Message}");
     return Task.CompletedTask;
 }
-
 
 async Task createAgent(long tgId, string text)
 {
@@ -301,8 +333,7 @@ InlineKeyboardMarkup GetExKB()
     return new InlineKeyboardMarkup(
         new[]
         {
-            new[] {InlineKeyboardButton.WithCallbackData("В меню", "menu")}
+            new[] {InlineKeyboardButton.WithCallbackData("◀︎ В меню", "menu")}
         }
     );
-    
 }

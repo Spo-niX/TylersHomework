@@ -1,5 +1,7 @@
 // ========== CallbackHandler.cs ==========
+using System.Net;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Requests;
@@ -13,6 +15,7 @@ namespace TylersHomework.Core;
 public class CallbackHandlerHelp
 {
     private readonly UserRepository _userRepo;
+    private readonly UserTaskRepository _userTaskRepo;
     private static readonly Dictionary<int, string> HeroNames = new Dictionary<int, string>
     {
         {1, "Anti-Mage"}, {2, "Axe"}, {3, "Bane"}, {4, "Bloodseeker"},
@@ -101,9 +104,10 @@ public class CallbackHandlerHelp
         {125, "Ringmaster"}, {126, "Kez"}, {127, "Largo"}
     };
 
-    public CallbackHandlerHelp(UserRepository userRepo)
+    public CallbackHandlerHelp(UserRepository userRepo, UserTaskRepository userTaskRepo)
     {
         _userRepo = userRepo;
+        _userTaskRepo = userTaskRepo;
     }
     public async Task HandleHelp(ITelegramBotClient bot, CallbackQuery callback, CancellationToken ct)
     {
@@ -130,48 +134,49 @@ public class CallbackHandlerHelp
             case "menu":
                 if (!isEx)
                 {
-                    await bot.EditMessageTextAsync(
-                        chatId, messageId,
-                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "⚠︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ⚠︎",
                         cancellationToken: ct
                     );
                     break;
                 }
-                await bot.EditMessageTextAsync(
-                        chatId, messageId,
-                        $"Здравия желаю, агент {agent.AgentName}!",
-                        replyMarkup: GetMainMenuKeyboard(),
-                        cancellationToken: ct
-                    );
+                var stream = System.IO.File.OpenRead("images/menu.jpg");
+                await bot.SendPhotoAsync(
+                    chatId,
+                    photo: new InputFileStream(stream),
+                    caption: $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
+                    replyMarkup: GetMainMenuKeyboard(),
+                    cancellationToken: ct);
                 break;
             case "setName":
                 UserStates.SetState(callback.From.Id, "waitName");
 
-                await bot.EditMessageTextAsync(
-                    chatId, messageId,
-                    "Введите ваш позывной (от 3 до 10 символов, только буквы):",
+                await bot.SendTextMessageAsync(
+                    chatId, 
+                    "☑︎ Введите ваш позывной (от 3 до 10 символов, только буквы):",
                     cancellationToken: ct
                 );
                 break;
             case "profile":
                 if (!isEx)
                 {
-                    await bot.EditMessageTextAsync(
-                        chatId, messageId,
-                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "⚠︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ⚠︎",
                         cancellationToken: ct
                     );
                     break;
                 }
-                await bot.EditMessageTextAsync(
-                    chatId, messageId,
+                await bot.SendTextMessageAsync(
+                    chatId,
                     $"""
-                    Здравия желаю, агент {agent.AgentName}!
+                    ⛑︎ Здравия желаю, агент {agent.AgentName}! ⛑︎
 
-                    Ваше актуальное значение MMR {agent.Mmr},
-                    что даёт вам право на титул {getRang(agent.Mmr)}.
+                    Ваше актуальное значение MMR {agent.Mmr} ♟︎,
+                    что даёт вам право на титул {getRang(agent.Mmr)} ⛩︎.
 
-                    На данный момент, вы выполнили {agent.TaskCompleted} заданий!
+                    На данный момент, вы выполнили {agent.TaskCompleted} заданий! ⚔︎
                     """,
                     replyMarkup: GetBackButton("menu"),
                     cancellationToken: ct
@@ -181,16 +186,16 @@ public class CallbackHandlerHelp
             case "getMode":
                 if (!isEx)
                 {
-                    await bot.EditMessageTextAsync(
-                        chatId, messageId,
-                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                    await bot.SendTextMessageAsync(
+                        chatId, 
+                        "⚠︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ⚠︎",
                         cancellationToken: ct
                     );
                     break;
                 }
-                await bot.EditMessageTextAsync(
-                        chatId, messageId,
-                        "Агент, выберите желаемый режим",
+                await bot.SendTextMessageAsync(
+                        chatId,
+                        "✔︎ Агент, выберите желаемый режим ✔︎",
                         replyMarkup: getModeKB(),
                         cancellationToken: ct
                     );
@@ -200,7 +205,7 @@ public class CallbackHandlerHelp
                 {
                     await bot.EditMessageTextAsync(
                         chatId, messageId,
-                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                        "⚠︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ⚠︎",
                         cancellationToken: ct
                     );
                     break;
@@ -212,7 +217,7 @@ public class CallbackHandlerHelp
                 {
                     await bot.EditMessageTextAsync(
                         chatId, messageId,
-                        "Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом",
+                        "⚠︎ Доступ в этот отдел запрещён для простых смертных. Напишите /start, чтобы стать агентом ⚠︎",
                         cancellationToken: ct
                     );
                     break;
@@ -238,16 +243,164 @@ public class CallbackHandlerHelp
                     agent.Mmr = 0; 
                 }
                 UserTaskState.ClearState(callback.From.Id);
+                UserStates.ClearState(callback.From.Id);
+                await bot.EditMessageTextAsync(
+                        chatId, messageId,
+                        $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
+                        replyMarkup: GetMainMenuKeyboard(),
+                        cancellationToken: ct
+                    );
+
+                break;
+            case "autoCheck":
+                var httpClient = new HttpClient();
+                var matchJS = await httpClient.GetAsync($"https://api.opendota.com/api/players/{agent.SteamId}/matches");
+                var js = await matchJS.Content.ReadAsStringAsync();
+                
+                if (!matchJS.IsSuccessStatusCode)
+                {
+                    var errorContent = await matchJS.Content.ReadAsStringAsync();
+                    if (matchJS.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        await bot.SendTextMessageAsync(
+                            chatId,
+                            "✖︎ Матч по такому ID не был найден. Проверьте ID ✖︎",
+                            cancellationToken: ct
+                        );
+                        return;
+                    }
+                    Console.WriteLine($"Ошибка API!!!!!! {matchJS.StatusCode} - {errorContent}");
+                    await bot.SendTextMessageAsync(
+                            chatId,
+                            "✖︎ Внешнаяя ошибка API. Агентсво борется над её устранением ✖︎",
+                            cancellationToken: ct
+                        );
+                    return;
+                }
+                
+                var doc = JsonDocument.Parse(js.ToString());
+                var root = doc.RootElement;
+
+                var players = root.GetProperty("players");
+                var heroId = -1;
+                short isWin = 0;
+                bool isFound = false;
+
+                List<string> items = new List<string>();
+                JsonElement agJs = new JsonElement();
+
+                UserTask task = await _userTaskRepo.GetByIdAsync(callback.From.Id);
+                if(task == null)
+                {
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Задание не найдено! Возьмите новое ✖︎",
+                        cancellationToken: ct
+                    );
+                    return; 
+                }
+                foreach (var player in players.EnumerateArray())
+                {
+                    heroId = player.GetProperty("hero_id").GetInt32();
+                    if(heroId == task.Hero)
+                    {
+                        isFound = true;
+                        agJs = player;
+                        player.TryGetProperty("win", out JsonElement winElement);
+
+                        isWin = winElement.GetInt16();
+                        
+                        for (int i = 0; i <= 5; i++)
+                        {
+                            var itemProp = player.GetProperty($"item_{i}");
+                            items.Add(GetItemName(itemProp.GetInt32()));
+                        }
+                        break;
+                    }
+                }
+
+                if(!isFound)
+                {
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Ваше присутствие в игре не обнаружено! Проверьте ID матча ✖︎",
+                        cancellationToken: ct
+                    );
+                    return;    
+                }         
+               
+                UserStates.ClearState(callback.From.Id);
+
+                if(isWin == 0)
+                {
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Вы проиграли! Задание провалено! ✖︎",
+                        replyMarkup: GetExKB(),
+                        cancellationToken: ct
+                    );
+
+                    UserTaskState.ClearState(callback.From.Id);
+
+                    agent.Mmr -= 25 + rnd.Next(-5, 6);
+                    if(agent.Mmr < 0)
+                    {
+                        agent.Mmr = 0; 
+                    }
+                    return;
+                }
+
+                if(!task.Slots.Any(x => items.Contains(x)))
+                {
+                    UserTaskState.ClearState(callback.From.Id);
+
+                    agent.Mmr -= 25 + rnd.Next(-5, 6);
+                    if(agent.Mmr < 0)
+                    {
+                        agent.Mmr = 0; 
+                    }
+
+                    await bot.SendTextMessageAsync(
+                        chatId,
+                        "✖︎ Обнаружено несоответствие ваших предметов, с предметами в задании! Задание провалено! ✖︎",
+                        replyMarkup: GetExKB(),
+                        cancellationToken: ct
+                    );
+                    return;
+                }
+
+                await bot.SendTextMessageAsync(
+                        chatId,
+                        "✔︎ Задание выполнено успешно! Поздравляю, агент! ✔︎",
+                        replyMarkup: GetExKB(),
+                        cancellationToken: ct
+                    );
+                agent.Mmr += 25 + rnd.Next(-5, 6);
+                agent.TaskCompleted++;
+                task.IsActive = false;
+                await _userRepo.SaveAsync(agent);
+                await _userTaskRepo.SaveAsync(task);
                 break;
         }
     }
 
+
+    private InlineKeyboardMarkup GetExKB()
+    {
+        return new InlineKeyboardMarkup(
+            new[]
+            {
+                new[] {InlineKeyboardButton.WithCallbackData("◀︎ В меню", "menu")}
+            }
+        );
+    }
+    
     private InlineKeyboardMarkup GetMainMenuKeyboard()
     {
         return new InlineKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Профиль", "profile") },
-            new[] { InlineKeyboardButton.WithCallbackData("Задания", "getMode") }
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Профиль", "profile") },
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Задания", "getMode") }
         });
     }
 
@@ -255,8 +408,8 @@ public class CallbackHandlerHelp
     {
         return new InlineKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Turbo", "turbo") },
-            new[] { InlineKeyboardButton.WithCallbackData("All pick", "allpick") }
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Turbo", "turbo") },
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ All pick", "allpick") }
         });
     }
 
@@ -264,9 +417,9 @@ public class CallbackHandlerHelp
     {
         return new InlineKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Задние 1", "task1") },
-            new[] { InlineKeyboardButton.WithCallbackData("Задание 2", "task2") },
-            new[] { InlineKeyboardButton.WithCallbackData("Задание 3", "task3") },
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Задние 1", "task1") },
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Задание 2", "task2") },
+            new[] { InlineKeyboardButton.WithCallbackData("▶︎ Задание 3", "task3") },
         });
     }
 
@@ -274,7 +427,7 @@ public class CallbackHandlerHelp
     {
         return new InlineKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Сдаться", "giveUp") },
+            new[] { InlineKeyboardButton.WithCallbackData("⏮︎ Сдаться", "giveUp") }
         });
     }
 
@@ -282,7 +435,7 @@ public class CallbackHandlerHelp
     {
         return new InlineKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Назад", target) }
+            new[] { InlineKeyboardButton.WithCallbackData("◀︎ Назад", target) }
         });
     }
 
@@ -344,7 +497,7 @@ public class CallbackHandlerHelp
     {
         while (ids.Count < 3)
         {
-            ids.Add(rnd.Next(1, 128));
+            ids.Add(HeroNames.ElementAt(rnd.Next(1,128)).Key);
         }
 
         eIds = ids.ToList();
@@ -356,11 +509,11 @@ public class CallbackHandlerHelp
         await bot.EditMessageTextAsync(
                 chatId, messageId,
                 $"""
-                        Ваши текущие герои (выбирайте после того, как будете уверены, что они не в бане)
+                        ⛑︎ Ваши текущие герои (выбирайте после того, как пикните)
                         
-                        1 - {GetHeroNameSorted(eIds[0])}
-                        2 - {GetHeroNameSorted(eIds[1])}
-                        3 - {GetHeroNameSorted(eIds[2])}
+                        1 - {GetHeroName(eIds[0])} ℹ︎
+                        2 - {GetHeroName(eIds[1])} ℹ︎
+                        3 - {GetHeroName(eIds[2])} ℹ︎
                         """,
                 replyMarkup: getTaskKB(),
                 cancellationToken: ct
@@ -372,22 +525,32 @@ public class CallbackHandlerHelp
         var st = UserTaskState.GetState(callback.From.Id);
 
         var task = GetUserTask(st[3] == 0, callback.From.Id, st[nmb]);
-        await bot.EditMessageTextAsync(
+        await _userTaskRepo.SaveAsync(task);
+
+        var media = new List<IAlbumInputMedia>();
+        for(int i = 0; i < 6; i++)
+        {
+            var stream = System.IO.File.OpenRead($"images/{task.Slots![i]}.webp");
+            media.Add(new InputMediaPhoto(new InputFileStream(stream, $"{task.Slots![i]}.webp")));
+        }
+        bot.SendMediaGroupAsync(chatId, media, cancellationToken: ct);
+
+        bot.EditMessageTextAsync(
             chatId, messageId,
             $"""
-            Ваше итоговое задание:
+            ℹ︎ Ваше итоговое задание:
 
-            Режим - {(task.Mode == 0 ? "turbo" : "all pick")}
-            Герой - {GetHeroNameSorted(task.Hero)}
-            Предметы - {task.Slots![0]}, {task.Slots[1]}, {task.Slots[2]}, {task.Slots[3]}, {task.Slots[4]}, {task.Slots[5]}
-            Цель - победа, с выполнением заданий
+            ⚕︎ Режим - {(task.Mode == 0 ? "turbo" : "all pick")}
+            ⚔︎ Герой - {GetHeroName(task.Hero)}
+            ⛏︎ Предметы - {task.Slots![0]}, {task.Slots[1]}, {task.Slots[2]}, {task.Slots[3]}, {task.Slots[4]}, {task.Slots[5]}
+            ☑︎ Цель - победа, с выполнением заданий
 
             Отправьте id матча, как только будете готовы, или сдайтесь, и потеряйте MMR
+            (из-за проблем со стороны API проверка по SteamID временно недоступна)
             """,
             replyMarkup: getGiveUpKB(),
             cancellationToken: ct);
     }
-
 
     private UserTask GetUserTask(bool isTurbo, long ownerId, int hero)
     {
@@ -397,7 +560,7 @@ public class CallbackHandlerHelp
         slt.Add(GetBootsItem(rnd.Next(1, 6)));
         for (byte i = 1; i < 6; i++)
         {
-            slt.Add(getItem(rnd.Next(0, 68)));
+            slt.Add(getItem(rnd.Next(0, 58)));
         }
         return new UserTask
         {
@@ -409,7 +572,7 @@ public class CallbackHandlerHelp
         };
     }
 
-    private string getItem(int id)
+    public string getItem(int id)
     {
         switch (id)
         {
@@ -458,31 +621,97 @@ public class CallbackHandlerHelp
             case 42: return "guardian_greaves";
             case 43: return "aether_lens";
             case 44: return "octarine_core";
-            case 45: return "dragon_lance";
-            case 46: return "iron_talon";
-            case 47: return "blight_stone";
-            case 48: return "tango_single";
-            case 49: return "crimson_guard";
-            case 50: return "wind_lace";
-            case 51: return "moon_shard";
-            case 52: return "silver_edge";
-            case 53: return "bloodthorn";
-            case 54: return "glimmer_cape";
-            case 55: return "hurricane_pike";
-            case 56: return "ring_of_basilius";
-            case 57: return "urn_of_shadows";
-            case 58: return "headdress";
-            case 59: return "orchid";
-            case 60: return "aegis";
-            case 61: return "helm_of_the_dominator";
-            case 62: return "maelstrom";
-            case 63: return "diffusal_blade_2";
-            case 64: return "shadow_amulet";
-            case 65: return "vladmir";
-            case 66: return "pipe";
-            case 67: return "oblivion_staff";
+            case 45: return "blight_stone";
+            case 46: return "crimson_guard";
+            case 47: return "moon_shard";
+            case 48: return "silver_edge";
+            case 49: return "bloodthorn";
+            case 50: return "glimmer_cape";
+            case 51: return "hurricane_pike";
+            case 52: return "orchid";
+            case 53: return "helm_of_the_dominator";
+            case 54: return "maelstrom";
+            case 55: return "diffusal_blade_2";
+            case 56: return "vladmir";
+            case 57: return "pipe";
         }
-        return null!;
+        return "undefiend";
+    }
+
+    public int GetItemId(string name)
+    {
+        switch (name)
+        {
+            case "blink": return 0;
+            case "phase_boots": return 1;
+            case "power_treads": return 2;
+            case "hand_of_midas": return 3;
+            case "sheepstick": return 4;
+            case "cyclone": return 5;
+            case "force_staff": return 6;
+            case "dagon": return 7;
+            case "scepter": return 8;
+            case "refresher": return 9;
+            case "assault": return 10;
+            case "heart": return 11;
+            case "black_king_bar": return 12;
+            case "shivas_guard": return 13;
+            case "bloodstone": return 14;
+            case "blade_mail": return 15;
+            case "rapier": return 16;
+            case "monkey_king_bar": return 17;
+            case "radiance": return 18;
+            case "butterfly": return 19;
+            case "greater_crit": return 20;
+            case "basher": return 21;
+            case "bfury": return 22;
+            case "manta": return 23;
+            case "armlet": return 24;
+            case "invis_sword": return 25;
+            case "sange_and_yasha": return 26;
+            case "satanic": return 27;
+            case "mjollnir": return 28;
+            case "skadi": return 29;
+            case "desolator": return 30;
+            case "mask_of_madness": return 31;
+            case "diffusal_blade": return 32;
+            case "ethereal_blade": return 33;
+            case "arcane_boots": return 34;
+            case "rod_of_atos": return 35;
+            case "abyssal_blade": return 36;
+            case "heavens_halberd": return 37;
+            case "tranquil_boots": return 38;
+            case "travel_boots_2": return 39;
+            case "lotus_orb": return 40;
+            case "solar_crest": return 41;
+            case "guardian_greaves": return 42;
+            case "aether_lens": return 43;
+            case "octarine_core": return 44;
+            case "dragon_lance": return 45;
+            case "iron_talon": return 46;
+            case "blight_stone": return 47;
+            case "tango_single": return 48;
+            case "crimson_guard": return 49;
+            case "wind_lace": return 50;
+            case "moon_shard": return 51;
+            case "silver_edge": return 52;
+            case "bloodthorn": return 53;
+            case "glimmer_cape": return 54;
+            case "hurricane_pike": return 55;
+            case "ring_of_basilius": return 56;
+            case "urn_of_shadows": return 57;
+            case "headdress": return 58;
+            case "orchid": return 59;
+            case "aegis": return 60;
+            case "helm_of_the_dominator": return 61;
+            case "maelstrom": return 62;
+            case "diffusal_blade_2": return 63;
+            case "shadow_amulet": return 64;
+            case "vladmir": return 65;
+            case "pipe": return 66;
+            case "oblivion_staff": return 67;
+            default: return -1;  
+        }
     }
 
     public string GetBootsItem(int id)
@@ -770,8 +999,8 @@ public class CallbackHandlerHelp
         }
     }
 
-    public static string GetHeroNameSorted(int index)
+    public static string GetHeroName(int index)
     {
-        return sortedHeroNames.TryGetValue(index, out string name) ? name : null!;
+        return HeroNames.TryGetValue(index, out string name) ? name : null!;
     }
 }
