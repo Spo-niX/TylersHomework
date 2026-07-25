@@ -244,12 +244,13 @@ public class CallbackHandlerHelp
                 }
                 UserTaskState.ClearState(callback.From.Id);
                 UserStates.ClearState(callback.From.Id);
-                await bot.SendTextMessageAsync(
-                        chatId,
-                        $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
-                        replyMarkup: GetMainMenuKeyboard(),
-                        cancellationToken: ct
-                    );
+                var stream1 = System.IO.File.OpenRead("images/menu.jpg");
+                await bot.SendPhotoAsync(
+                    messageId,
+                    photo: new InputFileStream(stream1),
+                    caption: $"⛑︎ Здравия желаю, агент {agent.AgentName}!",
+                    replyMarkup: GetMainMenuKeyboard(),
+                    cancellationToken: ct);
 
                 break;
             case "autoCheck":
