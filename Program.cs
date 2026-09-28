@@ -111,7 +111,6 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
             {
                 if (text!.Length < 3 || text.Length > 10 || !text.All(x => char.IsLetter(x)))
                 {
-                    UserStates.ClearState(message.From.Id);
                     await client.SendTextMessageAsync(
                         chatId, "✖︎ Позывной не прошёл валидацию. Пожалуйста, попробуйте ещё раз ✖︎", 
                         cancellationToken: cancellationToken);
@@ -137,7 +136,6 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
             {
                 if (!text!.All(x => char.IsDigit(x)))
                 {
-                    UserStates.ClearState(message.From.Id);
                     await client.SendTextMessageAsync(
                         chatId, "✖︎ Неверный формат. Попробуйте ещё раз! ✖︎", 
                         cancellationToken: cancellationToken);
