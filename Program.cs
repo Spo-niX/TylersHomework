@@ -286,7 +286,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                 await _userRepo.SaveAsync(agent);
                 await _taskRepo.SaveAsync(task);
             }
-            else if(UserStates.GetState(message.From.Id) == null)
+            else if(UserStates.GetState(message.From.Id) == null && text[0] == '/')
             {
                 await commandExecutor.ExecuteAsync(client, message, cancellationToken);
             }
