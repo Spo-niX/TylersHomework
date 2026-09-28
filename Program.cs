@@ -107,7 +107,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
             var text = message.Text;
 
             var state = UserStates.GetState(message.From!.Id);
-            if(state == "waitName")
+            if(state == "waitName" && text![0] != '/')
             {
                 if (text!.Length < 3 || text.Length > 10 || !text.All(x => char.IsLetter(x)))
                 {
@@ -132,7 +132,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                         cancellationToken: cancellationToken);
                 }
             }
-            else if(state == "waitSteam")
+            else if(state == "waitSteam" && text![0] != '/')
             {
                 if (!text!.All(x => char.IsDigit(x)))
                 {
@@ -155,7 +155,7 @@ async Task HandleUpdate(ITelegramBotClient client, Update update, CancellationTo
                         cancellationToken: cancellationToken);
                 }
             }
-            else if(state == "waitId")
+            else if(state == "waitId" && text![0] != '/')
             {
                 var matchJS = await httpClient.GetAsync($"https://api.opendota.com/api/matches/{text}");
                 var js = await matchJS.Content.ReadAsStringAsync();
