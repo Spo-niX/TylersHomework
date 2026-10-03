@@ -2,9 +2,14 @@ using Microsoft.Data.Sqlite;
 
 namespace TylersHomework.Core.Database;
 
-public static class DatabaseConnection
+public class DatabaseConnection
 {
     private static string _connectionString;
+
+    public DatabaseConnection(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
     
     public static void Initialize(string dbPath)
     {
